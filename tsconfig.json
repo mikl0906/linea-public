@@ -1,0 +1,17 @@
+{
+  // Standalone project for block scripts edited outside the app. Gives
+  // VS Code the virtual "lineadraw" module + global object types (lineadraw.d.ts).
+  // Never emits; scripts run via the app's sucrase pipeline. Check with:
+  //   npx tsc -p blocks
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": ["**/*.ts"]
+}

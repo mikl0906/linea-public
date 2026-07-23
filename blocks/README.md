@@ -1,38 +1,60 @@
-# Blocks
+# Block modules
 
-Working folder for creating Linea blocks outside Linea block editor.
+Working folder for block modules authored outside the app. A block IS a
+JS/TS module: one `defineBlock` call, one object, full type inference.
 
-A block definition is a javascript/typescript module (single file). Block files have .block.js/ts extension to make them recognizable.
+```ts
+import { defineBlock } from "lineadraw";
 
-# Block module
-
-A valid block module have the following structure
-
-```js
-// Globally unique identifier for the block definition.
-// Make sure to generate a new one for every new block definition.
-export const id = "d995a4be-cbe0-487c-8231-f37006a0b7ae";
-
-// Public name. This is how block appears in block panel in Linea
-export const name = "Block name";
-
-// An array of parameters - block properties
-export const params = [...];
-
-// Main block function. Runs on every block evaluation.
-// Receives block parameters and inputs
-// Returns an array of model objects
-export const main = ({params, inputs}) => { return [...] }
-
-// Define input function (optional, may be omitted)
-// Runs on block insertion.
-// Returns an array of block inputs (points, objects)
-// if omitted, a default implementation with a single point pick is used
-export const defineInput = async () => { return [...] }
+export default defineBlock({
+  id: "9f6f9dd3-…", // unique — a UUID is a good choice
+  name: "Surface", // Visible name
+  params: [
+    {
+      name: "type",
+      type: "enum",
+      default: "rock",
+      options: ["rock", "ground"],
+    },
+  ],
+  place: ["Start point", "End point"], // one point pick per label, in order
+  draw: ({ params, inputs: [start, end] }) => {
+    params.type; // "rock" | "ground" — inferred
+    return [{ type: "line", a: start, b: end }];
+  },
+});
 ```
 
-# Folder files
+Members:
 
-`linea.d.ts` - block types. Provides all nessesary type annotations for block scripts
+- `id`, `name` — identity (instances reference the id) and the library
+  label. Required.
+- `params` (optional) — the properties-panel table; each entry arrives in
+  `draw` as `params.<name>` with its precise type ("number" / "string" /
+  "boolean", enum option unions). May be a zero-arg function returning the
+  table.
+- `paramVisibility` (optional) — `({ params }) => ({ row: boolean })`,
+  re-run per properties-panel render; omitted names stay visible, hidden
+  values are kept and still reach `draw`.
+- `place` (optional) — an array of point labels (fixed picks; `inputs`
+  becomes a `Vec2` tuple of that length) or an interactive
+  `async ({ params, pickPoint, pickObject }) => [...]` function whose
+  return — a real tuple, even without `as const` — types `draw`'s
+  `inputs`. Omitted → a single "Insertion point" pick. Open-ended
+  collection catches the pick rejection (Escape) and returns what it has
+  (see Rebar/Waterproofing).
+- `draw` — objects in block-local coordinates, evaluated per instance. The
+  first placed point is the origin/pivot; the instance's rotation/scale
+  apply last, about it. Inferred inputs are a compile-time claim (instance
+  inputs are validated only as `(Vec2 | string)[]`).
 
-`tsconfig.json` - typescript configuration
+Geometry helpers come as named imports from `"lineadraw/helpers"`; object
+types (`Line`, `Polyline`, …) from `"lineadraw"` or the global scope. These
+files import straight into the app (drag-drop or the Blocks panel's Import
+button) — no container format. Pre-rename modules using named exports
+(`main`/`defineInput`, plain `export const id/name/params`) keep
+evaluating — those runtime aliases are frozen — but the typed authoring
+surface is `defineBlock`.
+
+`tsconfig.json` + `lineadraw.d.ts` make this a standalone TypeScript project
+so VS Code resolves the virtual modules and the global types.
